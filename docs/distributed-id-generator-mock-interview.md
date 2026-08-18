@@ -110,6 +110,38 @@ Questions / assumptions on the **shape**:
 
 ---
 
+## Follow-up deep dive — clock-backward without disk persistence (post-interview discussion)
+
+**Candidate's question.** How to solve Risk 1 *without* disk persistence? An SSD flush is 2–3 ms — unacceptable on the generation hot path.
+
+**Reframe: it's two sub-problems, not one. The flush pain only appears if you conflate them.**
+
+**Sub-problem A — regression while the process is alive** (NTP slew, leap-second smear, small step). **Zero disk.**
+- Seed from the wall clock **once at startup**, then drive the timestamp field from a **monotonic clock** (`CLOCK_MONOTONIC` / `System.nanoTime`) — never regresses by definition, so NTP moving the wall clock underneath can't move the ids.
+- In-memory `last_issued` watermark: `==` bump sequence / spin on overflow; small `<` regression spin-wait; large `<` refuse+alert. Fully covers A, no flush.
+
+**Sub-problem B — watermark lost across crash/restart.** The only part that ever wanted durability, and local disk is the wrong tool.
+- **Insight:** you already have a durable, consistent, off-hot-path store — the **etcd/ZK worker-id lease**. Push restart-durability into the startup coordination you already do. Don't add a second durable store on the hot path.
+- **The reclaim delay from Risk 2 solves B for free.** Assume `max_clock_skew` bounded (NTP-monitored; over-skew host self-ejects). Then:
+  ```
+  A's lease expires at E (per etcd); A self-fences ⇒ A's max timestamp ≤ E + max_skew.
+  Id 42 reclaimed only after lease_TTL past E ⇒ when B gets 42, B's clock ≥ E + lease_TTL − max_skew.
+  lease_TTL > 2 × max_skew  ⇒  B's clock > A's max timestamp, BY CONSTRUCTION, before B mints anything.
+  ```
+- Size **`lease_TTL ≥ 2·max_skew + margin`** → cross-restart clock hazard gone, no disk, no startup wait.
+- **Fast-restart edge:** a pod bouncing in 500 ms must not resurrect its old id inside the cooldown. Rule: **every process start is a cold claimant** — fresh lease / new fencing token, never fast-path re-acquisition of a still-cooling id.
+
+**If you genuinely want an explicit persisted watermark (belt + suspenders): reserve-ahead, never record-behind.**
+- **Record-behind** (persist `last_issued` *after* minting) → crash resumes from stale state → **replay**. Unsafe (the trap).
+- **Reserve-ahead** (persist a ceiling *before* minting) → crash resumes *above* it → **gap, never replay**. Safe by construction.
+- One etcd write: "worker 42 may issue up to `now + Δ`" (Δ ≈ 2 s); mint below the ceiling with zero per-id I/O; async task bumps it ahead. Cost = **one write per Δ, off hot path**; gaps free (no contiguity requirement).
+
+**Bottom line.** In-life regression = a *clock-source* problem (monotonic). Cross-restart regression = a *coordination* problem already paid for via the lease. The 2–3 ms flush never enters the picture.
+
+**Residual risk to pressure-test next:** what if `max_clock_skew` is *violated* (broken NTP host that doesn't self-eject in time)? — needs a defense-in-depth answer.
+
+---
+
 ## Phase 5 — Candidate wrap-up (~52 min)
 
 **Summary.** 10K QPS, globally distributed, HA GUID generation for long-lived IDs. Schema `version | region | worker | timestamp | sequence`. Regions independent (region-space); workers independent (worker-space); time+sequence unique per worker. Workers = a per-region fleet, rely on zk/etcd for registration + lease + heartbeat, behind an LB that mirrors zk/etcd leased-worker state.
