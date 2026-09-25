@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "4df957aa215ae25f",
+        "id": "aaf9e8a0a57ed668",
         "type": "tabs",
         "children": [
           {
-            "id": "7c9f45fcad708b7f",
+            "id": "9c0b1d98b22cbc9f",
             "type": "leaf",
             "state": {
-              "type": "excalidraw",
+              "type": "markdown",
               "state": {
-                "file": "docs/hotel-portal-ssytem-design/whiteboard.md"
+                "file": "code/keyed-task-executor/README.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "excalidraw-icon",
-              "title": "whiteboard"
+              "icon": "lucide-file",
+              "title": "README"
             }
           }
         ]
@@ -187,9 +189,13 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "7c9f45fcad708b7f",
+  "active": "9c0b1d98b22cbc9f",
   "lastOpenFiles": [
+    "code/Count Events.md",
+    "docs/Notification System Design.md",
     "docs/hotel-portal-ssytem-design/whiteboard.md",
+    "code/keyed-task-executor/README.md",
+    "Excalidraw",
     "CLAUDE.md",
     "docs/hotel-portal-ssytem-design",
     "docs/mock-uber-system-design/Transcript.md",
