@@ -1,0 +1,354 @@
+Subject: [PATCH] Part 1
+
+---
+ java/.mvn/maven.config                        |  2 +
+ java/pom.xml                                  |  8 +-
+ java/settings.xml                             | 26 ++++++
+ .../java/com/practice/interview/JsonHttp.java   | 38 ++++++++
+ .../main/java/com/practice/interview/Main.java  | 40 ++++++++-
+ .../java/com/practice/interview/Parser.java     | 35 ++++++++
+ .../java/com/practice/interview/MainTest.java   | 18 +++-
+ .../java/com/practice/interview/ParserTest.java | 88 +++++++++++++++++++
+ 8 files changed, 244 insertions(+), 11 deletions(-)
+ create mode 100644 java/.mvn/maven.config
+ create mode 100644 java/settings.xml
+ create mode 100644 java/src/main/java/com/practice/interview/JsonHttp.java
+ create mode 100644 java/src/main/java/com/practice/interview/Parser.java
+ create mode 100644 java/src/test/java/com/practice/interview/ParserTest.java
+
+diff --git a/java/.mvn/maven.config b/java/.mvn/maven.config
+new file mode 100644
+index 0000000..40fd9cd
+--- /dev/null
++++ b/java/.mvn/maven.config
+@@ -0,0 +1,2 @@
++-s
++settings.xml
+diff --git a/java/pom.xml b/java/pom.xml
+index 6e31359..a3ac2b7 100644
+--- a/java/pom.xml
++++ b/java/pom.xml
+@@ -1,5 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
++<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++  xmlns="http://maven.apache.org/POM/4.0.0"
++  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+ 
+   <modelVersion>4.0.0</modelVersion>
+   <parent>
+@@ -20,7 +22,7 @@
+   <properties>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+ 
+-    <java.version>1.8</java.version>
++    <java.version>15</java.version>
+ 
+     <guava.version>18.0</guava.version>
+     <junit.version>4.13.1</junit.version>
+@@ -114,4 +116,4 @@
+       </plugins>
+     </pluginManagement>
+   </build>
+-</project>
++</project>
+\ No newline at end of file
+diff --git a/java/settings.xml b/java/settings.xml
+new file mode 100644
+index 0000000..da9c10c
+--- /dev/null
++++ b/java/settings.xml
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++ | Project-local Maven settings: route ALL artifact resolution straight to
++ | public Maven Central, ignoring any corporate proxy/mirror configured in the
++ | global ~/.m2/settings.xml. The wildcard mirror below overrides that global
++ | config, so builds work off-VPN over Central's publicly trusted TLS cert (no
++ | corporate CA needs importing into the JDK truststore).
++ |
++ | Applied automatically via .mvn/maven.config, which passes `-s settings.xml`.
++ |
++ | Note: this resolves PUBLIC artifacts only. If you ever add an internal
++ | artifact that lives solely on the corporate Nexus, delete settings.xml and
++ | .mvn/maven.config to fall back to your global ~/.m2/settings.xml.
++ -->
++<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
++          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
++  <mirrors>
++    <mirror>
++      <id>maven-central-direct</id>
++      <name>Maven Central (direct, bypassing corporate proxy)</name>
++      <url>https://repo.maven.apache.org/maven2</url>
++      <mirrorOf>*</mirrorOf>
++    </mirror>
++  </mirrors>
++</settings>
+diff --git a/java/src/main/java/com/practice/interview/JsonHttp.java b/java/src/main/java/com/practice/interview/JsonHttp.java
+new file mode 100644
+index 0000000..6543ebd
+--- /dev/null
++++ b/java/src/main/java/com/practice/interview/JsonHttp.java
+@@ -0,0 +1,38 @@
++package com.practice.interview;
++
++import java.net.URI;
++import java.net.http.HttpClient;
++import java.net.http.HttpRequest;
++import java.net.http.HttpResponse;
++import java.net.http.HttpRequest.BodyPublishers;
++import java.net.http.HttpResponse.BodyHandlers;
++
++import com.practice.interview.MyLog.MyRequest;
++
++public class JsonHttp {
++    private final String baseUrl = "https://api.example.com";
++
++    private final HttpClient client;
++
++    public JsonHttp() {
++        client = HttpClient.newBuilder().build();
++    }
++
++    public int makeRequest(MyRequest request) throws Exception {
++        var requestBuilder = HttpRequest.newBuilder(new URI(baseUrl + request.url));
++        request.headers.forEach((k, v) -> {
++            if (!k.equals("Host")) {
++                requestBuilder.header(k, v);
++            }
++        });
++
++        requestBuilder.POST(BodyPublishers.ofString(request.getBody()));
++        HttpRequest httpRequest = requestBuilder.build();
++        try {
++            HttpResponse<String> response = client.send(httpRequest, BodyHandlers.ofString());
++            return response.statusCode();
++        } catch (Exception exp) {
++            return 500;
++        }
++    }
++}
+diff --git a/java/src/main/java/com/practice/interview/Main.java b/java/src/main/java/com/practice/interview/Main.java
+index 167b4bf..46574cc 100644
+--- a/java/src/main/java/com/practice/interview/Main.java
++++ b/java/src/main/java/com/practice/interview/Main.java
+@@ -1,14 +1,46 @@
+ package com.practice.interview;
+ 
++import java.util.ArrayList;
++import java.util.List;
++
+ import com.google.gson.GsonBuilder;
+ 
+ public class Main {
+ 	public static void main(String... args) {
+-		useGSONForSomeReason("hello\n");
+-		System.out.println("Hello world!");
++		List<MyLog> logs = parseLogs();
++		var c = new JsonHttp();
++		logs.forEach(l -> {
++			try {
++				int code = c.makeRequest(l.request);
++				System.out.println(String.format("Expected: %d, actual: %d", l.response.code, code));
++			} catch (Exception exp) {
++				System.err.println("err");
++			}
++		});
++	}
++
++	public static List<Integer> getCodes() {
++		List<Integer> codes = new ArrayList<>();
++		List<MyLog> logs = parseLogs();
++		var c = new JsonHttp();
++		logs.forEach(l -> {
++			try {
++				int code = c.makeRequest(l.request);
++				codes.add(code);
++				System.out.println(String.format("Expected: %d, actual: %d", l.response.code, code));
++			} catch (Exception exp) {
++				System.err.println("err");
++			}
++		});
++
++		return codes;
+ 	}
+ 
+-	public static void useGSONForSomeReason(String input) {
+-		new GsonBuilder().create().toJson(input, System.out);
++	public static List<MyLog> parseLogs() {
++		Parser parser = new Parser();
++		List<MyLog> logs = parser
++				.parse("../requestlog-charges.json");
++		System.out.println(logs.size());
++		return logs;
+ 	}
+ }
+diff --git a/java/src/main/java/com/practice/interview/Parser.java b/java/src/main/java/com/practice/interview/Parser.java
+new file mode 100644
+index 0000000..480d932
+--- /dev/null
++++ b/java/src/main/java/com/practice/interview/Parser.java
+@@ -0,0 +1,35 @@
++package com.practice.interview;
++
++import java.io.IOException;
++import java.lang.reflect.Type;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Collections;
++import java.util.List;
++
++import com.google.gson.Gson;
++import com.google.gson.reflect.TypeToken;
++
++public class Parser {
++    private final Gson gson;
++
++    public Parser() {
++        gson = new Gson();
++    }
++
++    public List<MyLog> parse(String filePath) {
++        try {
++            String content = Files.readString(Path.of(filePath));
++            return parseContent(content);
++        } catch (IOException ioe) {
++            System.err.printf("Failed to parse the file %s", filePath);
++            return Collections.EMPTY_LIST;
++        }
++    }
++
++    public List<MyLog> parseContent(String content) {
++        Type listType = new TypeToken<List<MyLog>>() {
++        }.getType();
++        return gson.fromJson(content, listType);
++    }
++}
+diff --git a/java/src/test/java/com/practice/interview/MainTest.java b/java/src/test/java/com/practice/interview/MainTest.java
+index 7b4b3bc..9fa0f8a 100644
+--- a/java/src/test/java/com/practice/interview/MainTest.java
++++ b/java/src/test/java/com/practice/interview/MainTest.java
+@@ -5,10 +5,20 @@ import org.junit.Test;
+ 
+ import static org.junit.Assert.*;
+ 
++import java.util.List;
++
+ public class MainTest {
+ 	@Test
+-	public void testUseGuavaForSomeReason() throws Exception {
+-		String actual = "hi;";
+-		Assert.assertEquals("hi;", actual);
++	public void testParsing() {
++		List<MyLog> logs = Main.parseLogs();
++		assertEquals(3, logs.size());
++	}
++
++	@Test
++	public void testRequests() {
++		List<Integer> codes = Main.getCodes();
++		codes.forEach(c -> {
++			System.out.println(c);
++		});
+ 	}
+-}
+\ No newline at end of file
++}
+diff --git a/java/src/test/java/com/practice/interview/ParserTest.java b/java/src/test/java/com/practice/interview/ParserTest.java
+new file mode 100644
+index 0000000..3aecc7a
+--- /dev/null
++++ b/java/src/test/java/com/practice/interview/ParserTest.java
+@@ -0,0 +1,88 @@
++package com.practice.interview;
++
++import java.util.List;
++import org.junit.Test;
++
++public class ParserTest {
++    private static final String TEST_JSON = """
++                                  [
++                        {
++                          "request": {
++                            "url": "/v1/charges",
++                            "headers": {
++                              "X-Client-User-Agent": "{\"lang\": \"ruby\", \"publisher\": \"example\", \"uname\": \"Linux version 3.13.0-57-generic (buildd@brownie) (gcc version 4.8.2 (Ubuntu 4.8.2-19ubuntu1) ) #95-Ubuntu SMP Fri Jun 19 09:28:15 UTC 2015\", \"hostname\": \"caron\", \"lang_version\": \"2.1.2 p95 (2014-05-08)\", \"engine\": \"ruby\", \"platform\": \"x86_64-linux\", \"bindings_version\": \"1.23.0\"}",
++                              "Host": "api.example.com",
++                              "Accept-Encoding": "gzip, deflate",
++                              "Authorization": "Bearer sk_test_MASKED",
++                              "Content-Type": "application/x-www-form-urlencoded",
++                              "Accept": "*/*; q=0.5, application/xml",
++                              "User-Agent": "ApiClient/v1 RubyBindings/1.23.0"
++                            },
++                            "body": "amount=123&currency=usd&card[number]=4242424242424242&card[exp_month]=12&card[exp_year]=2070",
++                            "method": "POST"
++                          },
++                          "response": {
++                            "body": "{\n  \"id\": \"ch_16T3toKv5xscqGyh90sf8TSa\",\n  \"amount\": 123,\n  \"amount_refunded\": 0,\n  \"application_fee\": null,\n  \"balance_transaction\": \"txn_16T3toKv5xscqGyhqAKF6jOq\",\n  \"captured\": true,\n  \"created\": 1437973900,\n  \"currency\": \"usd\",\n  \"customer\": null,\n  \"description\": null,\n  \"destination\": null,\n  \"dispute\": null,\n  \"failure_code\": null,\n  \"failure_message\": null,\n  \"fraud_details\": {\n  },\n  \"invoice\": null,\n  \"livemode\": false,\n  \"metadata\": {\n  },\n  \"object\": \"charge\",\n  \"paid\": true,\n  \"receipt_email\": null,\n  \"receipt_number\": null,\n  \"refunded\": false,\n  \"refunds\": {\n    \"has_more\": false,\n    \"total_count\": 0,\n    \"object\": \"list\",\n    \"data\": [\n\n    ],\n    \"url\": \"/v1/charges/ch_16T3toKv5xscqGyh90sf8TSa/refunds\"\n  },\n  \"shipping\": null,\n  \"source\": {\n    \"address_state\": null,\n    \"last4\": \"4242\",\n    \"dynamic_last4\": null,\n    \"address_zip_check\": null,\n    \"address_country\": null,\n    \"id\": \"card_16T3toKv5xscqGyh4LZ6rPyz\",\n    \"address_line2\": null,\n    \"address_line1\": null,\n    \"funding\": \"credit\",\n    \"metadata\": {\n    },\n    \"cvc_check\": null,\n    \"exp_month\": 12,\n    \"tokenization_method\": null,\n    \"address_line1_check\": null,\n    \"brand\": \"Visa\",\n    \"object\": \"card\",\n    \"fingerprint\": \"70RrlzfthHpu3e4l\",\n    \"exp_year\": 2070,\n    \"address_zip\": null,\n    \"customer\": null,\n    \"address_city\": null,\n    \"name\": null,\n    \"country\": \"US\"\n  },\n  \"statement_descriptor\": null,\n  \"status\": \"succeeded\"\n}",
++                            "headers": {
++                              "Content-Length": "1422",
++                              "Request-Id": "req_6gQly7HiMYbIEC",
++                              "Strict-Transport-Security": "max-age=31556926; includeSubDomains",
++                              "Api-Version": "2015-07-13",
++                              "Server": "nginx",
++                              "Connection": "keep-alive",
++                              "Cache-Control": "no-cache, no-store",
++                              "Date": "Mon, 27 Jul 2015 05:11:40 GMT",
++                              "Access-Control-Allow-Credentials": "true",
++                              "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS, DELETE",
++                              "Content-Type": "application/json",
++                              "Access-Control-Allow-Origin": "*"
++                            },
++                            "code": 200
++                          }
++                        },
++                        {
++                          "request": {
++                            "url": "/v1/charges",
++                            "headers": {
++                              "X-Client-User-Agent": "{\"lang\": \"ruby\", \"publisher\": \"example\", \"uname\": \"Linux version 3.13.0-57-generic (buildd@brownie) (gcc version 4.8.2 (Ubuntu 4.8.2-19ubuntu1) ) #95-Ubuntu SMP Fri Jun 19 09:28:15 UTC 2015\", \"hostname\": \"caron\", \"lang_version\": \"2.1.2 p95 (2014-05-08)\", \"engine\": \"ruby\", \"platform\": \"x86_64-linux\", \"bindings_version\": \"1.23.0\"}",
++                              "Host": "api.example.com",
++                              "Accept-Encoding": "gzip, deflate",
++                              "Authorization": "Bearer sk_test_MASKED",
++                              "Content-Type": "application/x-www-form-urlencoded",
++                              "Accept": "*/*; q=0.5, application/xml",
++                              "User-Agent": "ApiClient/v1 RubyBindings/1.23.0"
++                            },
++                            "body": "amount=123&currency=usd&card[number]=4242424242424242&card[exp_month]=12&card[exp_year]=2070&card[address_line1]=3180+18th+St&card[address_zip]=94110",
++                            "method": "POST"
++                          },
++                          "response": {
++                            "body": "{\n  \"id\": \"ch_16T4RoKv5xscqGyhKvytKEuG\",\n  \"amount\": 123,\n  \"amount_refunded\": 0,\n  \"application_fee\": null,\n  \"balance_transaction\": \"txn_16T4RoKv5xscqGyhUtgdxIrD\",\n  \"captured\": true,\n  \"created\": 1437976008,\n  \"currency\": \"usd\",\n  \"customer\": null,\n  \"description\": null,\n  \"destination\": null,\n  \"dispute\": null,\n  \"failure_code\": null,\n  \"failure_message\": null,\n  \"fraud_details\": {\n  },\n  \"invoice\": null,\n  \"livemode\": false,\n  \"metadata\": {\n  },\n  \"object\": \"charge\",\n  \"paid\": true,\n  \"receipt_email\": null,\n  \"receipt_number\": null,\n  \"refunded\": false,\n  \"refunds\": {\n    \"has_more\": false,\n    \"total_count\": 0,\n    \"object\": \"list\",\n    \"data\": [\n\n    ],\n    \"url\": \"/v1/charges/ch_16T4RoKv5xscqGyhKvytKEuG/refunds\"\n  },\n  \"shipping\": null,\n  \"source\": {\n    \"address_state\": null,\n    \"last4\": \"4242\",\n    \"dynamic_last4\": null,\n    \"address_zip_check\": \"pass\",\n    \"address_country\": null,\n    \"id\": \"card_16T4RoKv5xscqGyhav15111M\",\n    \"address_line2\": null,\n    \"address_line1\": \"3180 18th St\",\n    \"funding\": \"credit\",\n    \"metadata\": {\n    },\n    \"cvc_check\": null,\n    \"exp_month\": 12,\n    \"tokenization_method\": null,\n    \"address_line1_check\": \"pass\",\n    \"brand\": \"Visa\",\n    \"object\": \"card\",\n    \"fingerprint\": \"70RrlzfthHpu3e4l\",\n    \"exp_year\": 2070,\n    \"address_zip\": \"94110\",\n    \"customer\": null,\n    \"address_city\": null,\n    \"name\": null,\n    \"country\": \"US\"\n  },\n  \"statement_descriptor\": null,\n  \"status\": \"succeeded\"\n}",
++                            "headers": {
++                              "Content-Length": "1439",
++                              "Access-Control-Max-Age": "300",
++                              "Request-Id": "req_6gRKkuyOC7S0QT",
++                              "Strict-Transport-Security": "max-age=31556926; includeSubDomains",
++                              "Api-Version": "2015-07-13",
++                              "Server": "nginx",
++                              "Connection": "keep-alive",
++                              "Cache-Control": "no-cache, no-store",
++                              "Date": "Mon, 27 Jul 2015 05:46:48 GMT",
++                              "Access-Control-Allow-Credentials": "true",
++                              "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS, DELETE",
++                              "Content-Type": "application/json",
++                              "Access-Control-Allow-Origin": "*"
++                            },
++                            "code": 200
++                          }
++                        }
++            ]
++                                  """;
++
++    @Test
++    public void validJson() {
++        Parser parser = new Parser();
++        List<MyLog> logList = parser.parseContent(TEST_JSON);
++        System.out.println(logList.size());
++    }
++
++}
+-- 
+2.51.0
+
