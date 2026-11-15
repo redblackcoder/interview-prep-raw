@@ -13,3 +13,5 @@ docs/     # Design docs, notes, saved articles, Excalidraw diagrams
 ## Companion repo
 
 Structured wiki with extracted knowledge: [interview-prep-wiki](https://github.com/redblackcoder/interview-prep-wiki)
+
+The [problem catalog](https://github.com/redblackcoder/interview-prep-wiki/blob/master/problems/README.md) links individual prompts to their solutions. Browse the [Java implementations](code/java-practice/practice), [worked coding solutions](code/worked-problems), or [system designs](docs/designs).
