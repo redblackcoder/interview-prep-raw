@@ -1,9 +1,5 @@
 # Guarded feature rollout
 
-Detect engagement regressions during frequent releases by independent teams.
+Anonymized session notes.
 
-## Worked design
-
-Assign exposure consistently per user and record release version with each event. Compare canary and concurrent control over a sample large enough to distinguish noise. Monitor errors and latency alongside engagement.
-
-Halt or revert a cohort when the guardrail crosses its threshold. Keep an exposure ledger so overlapping experiments can be isolated and a regression traced to its release.
+The proposed approach was a gradual percentage rollout with metric-based automatic rollback. The discussion weighed the cost of slower releases against detecting engagement drops sooner. The interviewer suggested enforcing experiments and release scorecards.

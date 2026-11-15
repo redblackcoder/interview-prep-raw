@@ -1,9 +1,7 @@
 # Document sharing and sync
 
-Share binary files with users and groups and synchronize changes across devices.
+Original whiteboard (anonymized export).
 
-## Worked design
+The uploader creates pending metadata and stores file bytes separately. The board shows identity-provider integration and compares polling with WebSockets for client sync.
 
-Upload bytes to temporary storage and verify integrity before committing a file record. Store owner, group grants and comment/read permissions with metadata. A directory change appends a monotonic entry to its scoped change feed.
-
-Devices track cursors and lazily fetch bytes when opened. Recheck effective permissions on downloads and sync results. Revocation blocks subsequent reads and invalidates cached access grants.
+![document sharing and sync](../whiteboards/document-sharing-and-sync.svg)

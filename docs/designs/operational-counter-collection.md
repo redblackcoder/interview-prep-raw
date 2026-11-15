@@ -1,9 +1,13 @@
 # Operational counter collection
 
-Aggregate application counter increments for time-window queries.
+Anonymized session notes.
 
-## Worked design
+## Metrics System Design
 
-Accumulate increments by metric, dimensions and bucket in a local agent. Flush compact batches to collectors, then persist to a partitioned log. Reduce deltas into time-series buckets and roll up older data.
-
-Assign a stable batch ID for collector retries to avoid counting a batch twice. Bound local buffers and expose dropped increments. Edge loss may suit operational telemetry but would change billing totals.
+- Scoped to counters; prioritized low end-to-end latency over strict accuracy since not for billing
+- Chose time series DB over relational; LSM-tree fits high append writes, in-memory recent data aids recent queries
+    - Cassandra viable (metric as partition key, time as sort key) but weaker recent-window caching
+- Pipeline: SDK → agent (daemon set, pre-aggregates ~1s) → queue → collectors → time series DB
+    - Daemon set over sidecar to share memory across pods on a node
+    - Queue in front of collectors enables dedup (host+time msg ID) and backpressure
+- Considered UDP from service to agent: lossy delivery acceptable for operational metrics, opposite of queueing

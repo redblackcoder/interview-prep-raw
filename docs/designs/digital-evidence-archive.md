@@ -1,9 +1,11 @@
 # Digital evidence archive
 
-Ingest large evidence files with integrity verification, access control and an auditable chain of custody.
+Anonymized session notes.
 
-## Worked design
+## Upload
 
-Upload chunks, verify their hashes against a signed manifest, and publish the evidence version after verification. Keep immutable object versions and record which key attested to the content.
+The proposed upload flow signed the content hash with the device key. A server-managed signature was considered for devices without that capability. The discussion compared presigned upload URLs with an upload proxy.
 
-In the transaction authorizing a protected operation, write its audit record or outbox event. Export audit events in tenant order to retention-protected storage. Authorize searches and downloads independently so a search hit alone cannot grant access.
+## Audit and search
+
+The proposal sent hash-chained events through a tenant-partitioned queue to an append-oriented audit store. Ingress logging alone could record a request whose operation later failed. A transactional outbox was proposed during the discussion. For search, a policy engine filtered indexed results before returning them.

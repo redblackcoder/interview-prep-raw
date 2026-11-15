@@ -1,9 +1,7 @@
 # Distributed persistent key-value store
 
-Provide durable point reads and partition-local range scans across storage nodes.
+Anonymized design notes.
 
-## Worked design
+A stateless compute node holds the partition ring, locates the owning storage replicas and gathers quorum responses. Range queries split at partition boundaries and merge the returned ranges.
 
-Hash partition keys into movable shards. Within a shard store rows ordered by sort key so a range scan stays local. Append updates to the shard log, replicate to a quorum and acknowledge after commit. Apply committed entries to the local read index.
-
-A leader change resumes from the committed prefix. A stale follower read trades freshness for latency. Transfer a snapshot and subsequent log entries before moving ownership to a replacement replica.
+The notes discuss three replicas across availability zones, two acknowledgments for writes and two replicas for reads. At the end, two coordination models remained on the board: a leaderless coordinator with conflict repair, or forwarding to a consensus leader. No final choice was recorded.

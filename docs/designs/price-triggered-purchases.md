@@ -1,9 +1,17 @@
 # Price-triggered purchases
 
-Buy from a seller when a quoted price falls within a customer's limit before expiry.
+Anonymized session notes.
 
-## Worked design
+## Proposed Design
 
-Persist pending orders with deadlines and a next-check time. Claim due orders with expiring leases, group by item and obtain one current quote per seller and item. Skip expired orders and submit qualifying purchases with the quoted price and a stable idempotency key.
+- Ordering service writes pending orders to a DB; an allocator queries due orders and pushes to Kafka partitioned by book name
+- Allocator dedupes by book and batches about 100 orders per message; fulfillment workers buy and update the DB
+- DB marker with increasing version plus 5 minute hold timeout prevents duplicate queueing and stale overwrites
+    - Marker written to DB first, then queue
+- Order ID used as idempotency key in seller buy API so retries never double-buy
 
-A changed price reschedules the check within the remaining window. A lost purchase response requires seller-side idempotency or reconciliation before retry. Repeated checks throughout the window avoid waiting until just before expiration.
+## Gaps Raised and Production Readiness
+
+- Interviewer flagged a 10 hour order would sit unchecked until the last 30 minutes
+- Fix proposed: denormalize each order into hourly check buckets the allocator reads from
+- Launch plan: gradual rollout, queue and DB monitoring, queue-based autoscaling, allocator leader/standby, DB backups, seller rate limiting

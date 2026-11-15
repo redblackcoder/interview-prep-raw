@@ -1,9 +1,9 @@
 # Stream backlog diagnosis
 
-Recover a partitioned event pipeline whose lag grows while consumers appear healthy.
+Anonymized session notes.
 
-## Worked design
+## Kafka Queue Latency Scenario
 
-Measure arrival rate, drain rate and oldest unprocessed event age by partition. Look for a hot key, repeated retries or slow downstream calls on the lagging partitions. Throttle an offending source if the contract allows.
-
-Repartition by a finer key only after deciding which ordering guarantees may be relaxed. Replay from a checkpoint and compare processed counts and backlog age as the partition drains.
+- Scenario: enqueue latency grew from hours to days, high offsets, 128 partitions, no producer change, consumers healthy.
+- The candidate traced it to hot partitions from a user ID key, likely one user (agents or retrying workflows) flooding events.
+- Proposed fixes: repartition with salt or user ID plus session ID; hotfix to drop that user's events in consumer and producer.

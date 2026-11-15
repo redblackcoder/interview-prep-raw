@@ -1,9 +1,12 @@
 # Bid distribution
 
-Distribute changing bid values to several independent serving clusters.
+Anonymized session notes.
 
-## Worked design
+## Design: Distributing Bids to Ad-Serving Clusters
 
-Encode changed bid values with advertiser key and source version. Batch them into a log and give each cluster its own consumer group. A consumer accepts only newer versions and checkpoints after applying the batch.
-
-Bootstrap from a snapshot labeled with its source offset, then replay later deltas. Measure consumer lag and elapsed time since production because fresh offsets alone cannot detect a stalled producer.
+- Bids for about 15 million advertisers produced every five minutes; assume about 1 million change per cycle
+- Rejected direct API calls due to network overhead; proposed chunked deltas on a queue consumed per cluster into a key-value store
+    - Key by advertiser ID, not query (query cardinality too high)
+    - Staggered updates across clusters are acceptable
+- Instrumentation: enqueue time for consumer latency, Kafka-style offset lag, producer-side error telemetry
+- Recovery: stateless consumers resume from offset; hourly snapshots plus replay of later deltas avoid long backlogs

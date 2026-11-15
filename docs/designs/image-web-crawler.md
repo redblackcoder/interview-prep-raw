@@ -1,9 +1,9 @@
 # Image web crawler
 
-Submit seed URLs and retrieve a paginated set of images reachable from each seed.
+Original whiteboard (anonymized export).
 
-## Worked design
+Submit seeds as a job, track pending URLs and associate each discovered image with its input URL. The second board explores host-based sharding and the crawl frontier.
 
-Create a job with seeds and a depth limit. Normalize URLs, queue work by host, and throttle fetches per host. Cache parsed links and images by URL. Track traversal by seed, URL and remaining depth so a shared page contributes images to every relevant seed.
+![image web crawler](../whiteboards/image-web-crawler.svg)
 
-Example: if two seeds reach one gallery, fetch the gallery once and propagate its image IDs to both results. Track pending work durably before marking a job complete. Paginate seed and image lists independently.
+![crawler sharding](../whiteboards/crawler-sharding.svg)

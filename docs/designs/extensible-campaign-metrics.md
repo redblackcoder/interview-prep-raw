@@ -1,9 +1,10 @@
 # Extensible campaign metrics
 
-Add dashboard metrics and dimensions without rewriting a batch pipeline for each request.
+Anonymized session notes.
 
-## Worked design
+## Design: Extensible Metrics Framework
 
-Ingest structured campaign events with stable event IDs. Validate required fields and deduplicate before aggregating into time buckets at campaign grain. Join dimension values valid for the event time.
-
-Define each metric's numerator, denominator and permitted dimensions in configuration. Compute ratios from summed components. When a definition changes, version it and backfill so a dashboard cannot silently mix incompatible definitions.
+- Batch case (dashboard within one hour): Spark micro-batches write aggregates to warehouse, queried via an engine (sounded like 'Dremio')
+- Star schema: fact table at campaign ID grain, separate dimension tables like market and bidding strategy
+- Structured logs and a config-driven contract let new metrics and dimensions be added without editing Spark jobs
+- If joins get slow, add pipelines pushing into a faster database

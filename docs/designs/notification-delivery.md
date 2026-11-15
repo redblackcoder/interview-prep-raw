@@ -1,11 +1,9 @@
 # Notification delivery
 
-Deliver social events to an inbox and through users' enabled channels.
+Original whiteboard (anonymized export).
 
-## Worked design
+The live path uses long-lived connections, recipient-keyed queues and client-side deduplication. A separate board models email, text and in-app delivery according to user settings.
 
-Resolve event recipients and preferences. Insert a notification keyed by event and recipient together with an outbox entry. Project it into the inbox and enqueue enabled channels separately. Push a live update for online recipients and retain unread state for offline readers.
+![live notification delivery](../whiteboards/live-notification-delivery.svg)
 
-Retry transient channel failures independently with stable delivery IDs. Track provider acknowledgments and dead-letter exhausted attempts. A provider that cannot deduplicate retries may deliver twice.
-
-For live delivery, partition the durable stream by recipient and maintain a registry mapping active sessions to connection servers. Forward to the current server, then resume from the last acknowledged sequence after reconnect. A direct push and a replay can race, so the client deduplicates by notification ID.
+![notification channels](../whiteboards/notification-channels.svg)

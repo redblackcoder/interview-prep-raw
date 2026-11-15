@@ -1,9 +1,7 @@
 # Search autocomplete
 
-Return the ten highest-ranked keyword suggestions while a user types.
+Original architecture sketch (anonymized crop).
 
-## Worked design
+The service targets ten suggestions within 200 ms. The diagram weighs the memory and update cost of storing every prefix against a trie sharded on its first characters.
 
-Reference design for a requirements-only sketch. Normalize search terms consistently at ingest and lookup. Aggregate frequencies and insert terms in a trie, caching the ten best completions at each visited prefix. At request time traverse the normalized prefix and read its cached list.
-
-Publish index versions atomically. Include stable tie-breaking and bounded refresh intervals. Have the client discard responses for older prefixes so a slow lookup cannot overwrite newer suggestions.
+![Original autocomplete service diagram, cropped to the serving and indexing paths](../whiteboards/search-autocomplete.png)

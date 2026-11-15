@@ -1,9 +1,7 @@
 # Conversational model serving
 
-Stream responses for multi-turn conversations under a fixed inference budget.
+Anonymized candidate design notes.
 
-## Worked design
+Client sends the message via a streaming HTTP connection (the request carries the conversation; a streaming response returns tokens one by one). The connection from client → middleware stays open ~5s (avg generation duration).
 
-Append the user turn with a stable request ID. Assemble context within a token budget, admit work to a bounded model queue, and route it to an inference worker. Stream numbered output chunks through a session channel to the connected gateway.
-
-Persist the final assistant turn and terminal state. A reconnect can resume at a known chunk or fetch the final turn. Reject or degrade requests whose deadlines exceed available capacity.
+Treat the generator fleet as a black box that handles, say, ~10,000 concurrent. Huge mismatch: 10M in vs 10K served. If requests just park in the kernel TCP buffer, boxes OOM and crash. Introduce a **persisted queue (Kafka)**: requests enqueue; the fleet consumes at its capacity (~10K/s). During peak, user response time degrades but the system doesn't fall over.

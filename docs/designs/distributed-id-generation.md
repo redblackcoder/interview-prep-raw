@@ -1,9 +1,9 @@
 # Distributed ID generation
 
-Allocate unique identifiers from multiple machines without a central write for every ID.
+Anonymized candidate design notes.
 
-## Worked design
+Combine counter+timestamp: `version+region ~10b | timestamp ~41b | sequence`. Pre-generate via a **leader "generator"** writing one key **per millisecond** into **Redis**; callers `INCR`+`GET` the current-ms key to claim a sequence number, then assemble `version | region | time | sequence`. Bound Redis with a few-seconds **TTL** on ms-keys (only ~2–3K live keys). Multi-AZ Redis; ~3 GUID handlers across AZs; single active generator + passive standby via K8s.
 
-For range allocation, atomically advance a durable high-water mark by B and return the old to new interval to one worker. The worker hands out IDs locally until exhausted. Never recycle a partially consumed range after a crash.
+Worker keeps **last-generated in memory and persisted on disk**, refuses to go back in time, survives restarts without losing sequence.
 
-Larger ranges amortize coordination at the cost of gaps. For time-sortable IDs, assign nonoverlapping worker epochs, cap the per-tick sequence, and wait on clock rollback or sequence exhaustion. Neither approach implies gap-free global creation order.
+Register worker with zk/etcd, **heartbeat** to keep the lease fresh; missed heartbeat → marked unhealthy → **removed from LB** so it gets no requests; a new worker takes the now-expired id. Bounded workers ⇒ bounded ids ⇒ fit the bits.
